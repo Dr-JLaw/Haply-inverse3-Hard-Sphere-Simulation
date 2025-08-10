@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Hard Sphere Simulator (WebSocket) - V2</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    p { font-size: 1.2em; }
+    button { padding: 10px 20px; margin: 10px 5px; font-size: 1em; }
+  </style>
+</head>
+<body>
+  <h2>Hard Sphere Simulation- V1</h2>
+  <button onclick="setAnchor()">📍 Set Center Point (Diameter=5cm)</button>
+  <button onclick="clearAnchor()">❌ Clear Anchor</button>
+  <p id="status">Connecting...</p>
+  <p id="position">Position: N/A</p>
+  <p id="force">Force Sent: N/A</p>
+  <p id="anchor">Anchor: N/A</p>
+  <p id="distance">Distance from Anchor: N/A</p>
+  <p id="restLength">Spring rest length: N/A</p>
+  <p id="stretch">Spring length change: N/A</p>
+
+  <script>
+    const ws = new WebSocket("ws://localhost:10001");
+    let deviceID = null;
+    let anchor = null;
+    const restLength = 0.1;
+    const k = 0;
+    const k1 = 20*5;
+    ws.onopen = () => {
+      document.getElementById("status").innerText = "✅ Connected to Inverse3 WebSocket";
+    };
+
+    ws.onerror = (err) => {
+      document.getElementById("status").innerText = "❌ WebSocket Error";
+      console.error("WebSocket error:", err);
+    };
+
+    ws.onmessage = mainLoop;
+
+    function mainLoop(event) {
+      const data = JSON.parse(event.data);
+      const device = data.inverse3?.[0];
+      if (!device) return;
+
+      deviceID = device.device_id;
+      const pos = device.state?.cursor_position;
+      if (!pos) return;
+
+      document.getElementById("position").innerText =
+        `Position → X: ${pos.x.toFixed(3)} | Y: ${pos.y.toFixed(3)} | Z: ${pos.z.toFixed(3)}`;
+
+      let force = { x: 0, y: 0, z: 0 };
+
+      if (anchor) {
+        const dx = pos.x - anchor.x;
+        const dy = pos.y - anchor.y;
+        const dz = pos.z - anchor.z;
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        document.getElementById("distance").innerText = `Distance from Anchor: ${dist.toFixed(4)} m`;
+
+        if (dist > restLength) {
+          const stretch = dist - restLength;
+          const direction = { x: dx / dist, y: dy / dist, z: dz / dist };
+          force = {
+            x: -k * stretch * direction.x,
+            y: -k * stretch * direction.y,
+            z: -k * stretch * direction.z
+          };
+        }
+        
+         if (dist <= restLength) {
+          const stretch = dist - restLength;
+          const direction = { x: dx / dist, y: dy / dist, z: dz / dist };
+          force = {
+            x: -k1* stretch * direction.x,
+            y: -k1* stretch * direction.y,
+            z: -k1* stretch * direction.z
+          };
+        }
+      } else {
+        document.getElementById("distance").innerText = "Distance from Anchor: N/A";
+      }
+
+      const msg = {
+        inverse3: [
+          {
+            device_id: deviceID,
+            commands: { set_cursor_force: { values: force } }
+          }
+        ]
+      };
+
+      ws.send(JSON.stringify(msg));
+
+      document.getElementById("force").innerText =
+        `Force Sent → X: ${force.x.toFixed(2)} | Y: ${force.y.toFixed(2)} | Z: ${force.z.toFixed(2)}`;
+    }
+
+    function setAnchor() {
+      document.getElementById("status").innerText = "🔄 Recording anchor...";
+      // Temporarily add one-time listener
+      const handler = (event) => {
+        const data = JSON.parse(event.data);
+        const device = data.inverse3?.[0];
+        if (!device) return;
+        anchor = device.state?.cursor_position;
+        document.getElementById("anchor").innerText =
+          `Anchor → X: ${anchor.x.toFixed(3)} | Y: ${anchor.y.toFixed(3)} | Z: ${anchor.z.toFixed(3)}`;
+        document.getElementById("status").innerText = "✅ Anchor Set";
+        ws.removeEventListener("message", handler); // Restore main loop
+      };
+      ws.addEventListener("message", handler);
+    }
+
+    function clearAnchor() {
+      anchor = null;
+      document.getElementById("anchor").innerText = "Anchor: N/A";
+      document.getElementById("status").innerText = "Anchor cleared.";
+    }
+  </script>
+</body>
+</html>
+
