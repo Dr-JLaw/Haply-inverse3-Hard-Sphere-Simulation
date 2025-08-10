@@ -12,16 +12,17 @@
   <h2>Hard Sphere Simulation- V1</h2>
   <button onclick="setAnchor()">📍 Set Center Point (Radius=5cm)</button>
   <button onclick="setAnchor2()">📍 Set Center Point2 (Radius=10cm)</button>
-  <button onclick="clearAnchor()">❌ Clear Sphere</button>
+  <button onclick="clearAnchor()">❌ Clear All Spheres</button>
   <p id="status">Connecting...</p>
   <p id="position">Position: N/A</p>
   <p id="force">Force Sent: N/A</p>
-  <p id="anchor">Anchor: N/A</p>
-  <p id="distance">Distance from Anchor: N/A</p>
-  <p id="distance2">Distance from Anchor2: N/A</p>
+  <p id="anchor">Sphere 1: N/A</p>
+  <p id="anchor">Sphere 2: N/A</p>
+  <p id="distance">Distance from Center 1: N/A</p>
+  <p id="distance2">Distance from Center 2: N/A</p>
   <p id="restLength">Sphere 1 Diameter: N/A</p>
   <p id="restLength2">Sphere 2 Diameter: N/A</p>
-  <p id="stretch">Spring length change: N/A</p>
+
 
   <script>
     const ws = new WebSocket("ws://localhost:10001");
